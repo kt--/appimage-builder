@@ -95,6 +95,28 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Check Python matches the recipes' Ubuntu release
+        # The AppImage bundles python<X.Y>-minimal from the recipe's Ubuntu release, where X.Y is the
+        # version of the python3 running this job, and pip-installs compiled modules built for X.Y into it.
+        # So the runner's release, the recipes' release and python3 must all agree (24.04 -> 3.12, 26.04 -> 3.14).
+        run: |
+          cd ${{ github.workspace }}/recipes/appimage-builder
+          py=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+          runner=$(lsb_release -cs)
+          echo "Runner release: $runner, build python3: $py ($(command -v python3))"
+          for recipe in AppImageBuilder.yml AppImageBuilder-debug.yml; do
+            for suite in $(grep -oP '^\s*-\s*sourceline:.*\bdeb\s+(\[[^]]*\]\s+)?\S+\s+\K[a-z]+' "$recipe" | sort -u); do
+              if [ "$suite" != "$runner" ]; then
+                echo "::error file=recipes/appimage-builder/$recipe::Recipe uses Ubuntu '$suite' but the runner is '$runner'; they must match so python3 matches the bundled Python"
+                exit 1
+              fi
+            done
+          done
+          if ! apt-cache show "python${py}-minimal" > /dev/null 2>&1; then
+            echo "::error::python${py}-minimal is not available in '$runner'; build with that release's system python3 instead of python ${py}"
+            exit 1
+          fi
+          echo "OK: python${py}-minimal is available in '$runner'"
       - name: Build Python Wheel
         run: |
           cd ${{ github.workspace }}
