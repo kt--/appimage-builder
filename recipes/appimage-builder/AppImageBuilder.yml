@@ -68,6 +68,10 @@ AppDir:
       # See https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHOME
       PYTHONHOME: '${APPDIR}/usr'
       PYTHONBREAKPOINT: '0'
+      # Python >= 3.13 starts subprocesses with posix_spawn(), which AppRun's exec hooks don't intercept,
+      # so host tools (e.g. /usr/bin/bash) would inherit the bundled glibc via LD_LIBRARY_PATH and crash
+      # whenever the compat runtime is in use. Force the fork+exec path instead.
+      _PYTHON_SUBPROCESS_USE_POSIX_SPAWN: '0'
       # Path to the site-packages dir or other modules dirs
       # See https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH
       PYTHONPATH: '${APPDIR}/usr/lib/python{{APPIMAGE_BUILDER_PY_VERSION}}/site-packages'
